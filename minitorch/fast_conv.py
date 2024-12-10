@@ -87,11 +87,36 @@ def _tensor_conv1d(
         and in_channels == in_channels_
         and out_channels == out_channels_
     )
-    s1 = input_strides
-    s2 = weight_strides
+    for batch_index in prange(batch_):
+        for out_channel in prange(out_channels):
+            for out_width_index in prange(out_width):
+                output_value = 0.0
+                output_index = (
+                    batch_index * out_strides[0]
+                    + out_channel * out_strides[1]
+                    + out_width_index * out_strides[2]
+                )
+                for in_channel in prange(in_channels):
+                    for kernel_index in prange(kw):
+                        input_width_index = (
+                            out_width_index - kernel_index
+                            if reverse
+                            else out_width_index + kernel_index
+                        )
+                        if 0 <= input_width_index < width:
+                            input_index = (
+                                batch_index * input_strides[0]
+                                + in_channel * input_strides[1]
+                                + input_width_index * input_strides[2]
+                            )
+                            weight_index = (
+                                out_channel * weight_strides[0]
+                                + in_channel * weight_strides[1]
+                                + kernel_index * weight_strides[2]
+                            )
+                            output_value += input[input_index] * weight[weight_index]
+                out[output_index] = output_value
 
-    # TODO: Implement for Task 4.1.
-    raise NotImplementedError("Need to implement for Task 4.1")
 
 
 tensor_conv1d = njit(_tensor_conv1d, parallel=True)
