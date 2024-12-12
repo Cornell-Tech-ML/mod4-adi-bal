@@ -34,8 +34,7 @@ class Conv1d(minitorch.Module):
         self.bias = RParam(1, out_channels, 1)
 
     def forward(self, input):
-        # TODO: Implement for Task 4.5.
-        raise NotImplementedError("Need to implement for Task 4.5")
+        return minitorch.conv1d(input, self.weights.value) + self.bias.value
 
 
 class CNNSentimentKim(minitorch.Module):
@@ -61,15 +60,39 @@ class CNNSentimentKim(minitorch.Module):
     ):
         super().__init__()
         self.feature_map_size = feature_map_size
-        # TODO: Implement for Task 4.5.
-        raise NotImplementedError("Need to implement for Task 4.5")
+        self.dropout = dropout
+        self.conv1 = Conv1d(embedding_size, feature_map_size, filter_sizes[0])
+        self.conv2 = Conv1d(embedding_size, feature_map_size, filter_sizes[1])
+        self.conv3 = Conv1d(embedding_size, feature_map_size, filter_sizes[2])
+        self.fc = Linear(feature_map_size, 1)
 
     def forward(self, embeddings):
         """
         embeddings tensor: [batch x sentence length x embedding dim]
         """
         # TODO: Implement for Task 4.5.
-        raise NotImplementedError("Need to implement for Task 4.5")
+        # Permute input to match Conv1d expected shape (batch, channels, length)
+        x = embeddings.permute(0, 2, 1)
+        
+        # Apply convolutions and ReLU activations
+        conv_outputs = [
+            self.conv1(x).relu(),
+            self.conv2(x).relu(), 
+            self.conv3(x).relu()
+        ]
+        
+        # Max pooling over time dimension for each conv output
+        pooled_outputs = [minitorch.max(conv_out, 2) for conv_out in conv_outputs]
+        
+        # Combine pooled features
+        pooled = sum(pooled_outputs)
+        pooled = pooled.view(pooled.shape[0], pooled.shape[1])
+        
+        # Final fully connected layer with dropout and sigmoid
+        out = self.fc(pooled)
+        out = minitorch.dropout(out, self.dropout, ignore=not self.training)
+        
+        return out.sigmoid().view(x.shape[0])
 
 
 # Evaluation helper methods
@@ -95,7 +118,6 @@ def get_accuracy(predictions_array):
 
 best_val = 0.0
 
-
 def default_log_fn(
     epoch,
     train_loss,
@@ -104,16 +126,26 @@ def default_log_fn(
     train_accuracy,
     validation_predictions,
     validation_accuracy,
+    log_file=None
 ):
     global best_val
     best_val = (
         best_val if best_val > validation_accuracy[-1] else validation_accuracy[-1]
     )
-    print(f"Epoch {epoch}, loss {train_loss}, train accuracy: {train_accuracy[-1]:.2%}")
-    if len(validation_predictions) > 0:
-        print(f"Validation accuracy: {validation_accuracy[-1]:.2%}")
-        print(f"Best Valid accuracy: {best_val:.2%}")
+    # Build log message components
+    base_message = f"Epoch {epoch}, loss {train_loss:.4f}, train accuracy: {train_accuracy[-1]:.2%}"
+    validation_message = (
+        f"\nValidation accuracy: {validation_accuracy[-1]:.2%}\n"
+        f"Best Valid accuracy: {best_val:.2%}"
+        if len(validation_predictions) > 0 else ""
+    )
+    log_message = base_message + validation_message
 
+    # Output logs
+    print(log_message)
+    if log_file:
+        log_file.write(log_message + "\n") 
+        log_file.flush()
 
 class SentenceSentimentTrain:
     def __init__(self, model):
@@ -127,6 +159,7 @@ class SentenceSentimentTrain:
         max_epochs=500,
         data_val=None,
         log_fn=default_log_fn,
+        log_file=None
     ):
         model = self.model
         (X_train, y_train) = data_train
@@ -193,6 +226,7 @@ class SentenceSentimentTrain:
                 train_accuracy,
                 validation_predictions,
                 validation_accuracy,
+                log_file=log_file
             )
             total_loss = 0.0
 
@@ -256,7 +290,7 @@ if __name__ == "__main__":
     train_size = 450
     validation_size = 100
     learning_rate = 0.01
-    max_epochs = 250
+    max_epochs = 50
 
     (X_train, y_train), (X_val, y_val) = encode_sentiment_data(
         load_dataset("glue", "sst2"),
@@ -264,12 +298,28 @@ if __name__ == "__main__":
         train_size,
         validation_size,
     )
-    model_trainer = SentenceSentimentTrain(
-        CNNSentimentKim(feature_map_size=100, filter_sizes=[3, 4, 5], dropout=0.25)
+    # Training configuration
+    config = {
+        'feature_map_size': 100,
+        'filter_sizes': [3, 4, 5], 
+        'dropout_rate': 0.25,
+        'log_file_path': 'sentiment_logs.txt'
+    }
+
+    # Initialize model and trainer
+    model = CNNSentimentKim(
+        feature_map_size=config['feature_map_size'],
+        filter_sizes=config['filter_sizes'],
+        dropout=config['dropout_rate']
     )
-    model_trainer.train(
-        (X_train, y_train),
-        learning_rate,
-        max_epochs=max_epochs,
-        data_val=(X_val, y_val),
-    )
+    model_trainer = SentenceSentimentTrain(model)
+
+    # Run training
+    with open(config['log_file_path'], 'w') as log_file:
+        model_trainer.train(
+            data_train=(X_train, y_train),
+            learning_rate=learning_rate,
+            max_epochs=max_epochs,
+            data_val=(X_val, y_val),
+            log_file=log_file
+        )
