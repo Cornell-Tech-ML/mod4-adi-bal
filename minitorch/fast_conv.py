@@ -163,64 +163,19 @@ class Conv1dFun(Function):
 
     @staticmethod
     def backward(ctx: Context, grad_output: Tensor) -> Tuple[Tensor, Tensor]:
-        """Compute the gradient of the loss with respect to the input and weight.
+        """Compute the gradient of the loss with respect to the input and weight tensors.
 
         Args:
         ----
             ctx : Context
-                The context object containing saved values from the forward pass.
+                The context object containing saved tensors from the forward pass.
             grad_output : Tensor
-                The gradient of the loss with respect to the output of the convolution.
+                The gradient of the loss with respect to the output of the forward pass.
 
         Returns:
         -------
             Tuple[Tensor, Tensor]
-                The gradients of the loss with respect to the input and weight.
-
-        """
-        """Compute the gradient of the loss with respect to the input and weight.
-
-        Args:
-        ----
-            ctx : Context
-                The context object containing saved values from the forward pass.
-            grad_output : Tensor
-                The gradient of the loss with respect to the output of the convolution.
-
-        Returns:
-        -------
-            Tuple[Tensor, Tensor]
-                The gradients of the loss with respect to the input and weight.
-
-        """
-        """Compute the gradient of the loss with respect to the input and weight.
-
-        Args:
-        ----
-            ctx : Context
-                The context object containing saved values from the forward pass.
-            grad_output : Tensor
-                The gradient of the loss with respect to the output of the convolution.
-
-        Returns:
-        -------
-            Tuple[Tensor, Tensor]
-                The gradients of the loss with respect to the input and weight.
-
-        """
-        """Compute the gradient of the loss with respect to the input and weight.
-
-        Args:
-        ----
-            ctx : Context
-                The context object containing saved values from the forward pass.
-            grad_output : Tensor
-                The gradient of the loss with respect to the output of the convolution.
-
-        Returns:
-        -------
-            Tuple[Tensor, Tensor]
-                The gradients of the loss with respect to the input and weight.
+                A tuple containing the gradients of the loss with respect to the input and weight tensors.
 
         """
         input, weight = ctx.saved_values
@@ -385,6 +340,23 @@ class Conv2dFun(Function):
 
     @staticmethod
     def backward(ctx: Context, grad_output: Tensor) -> Tuple[Tensor, Tensor]:
+        """Compute the gradient of 2D convolution with respect to input and weight.
+
+        Args:
+        ----
+            ctx: Context containing saved input and weight tensors
+            grad_output: Gradient of loss with respect to convolution output
+                        Shape: batch x out_channel x h x w
+
+        Returns:
+        -------
+            Tuple containing:
+            - grad_input: Gradient with respect to input
+                         Shape: batch x in_channel x h x w
+            - grad_weight: Gradient with respect to weight
+                          Shape: out_channel x in_channel x kh x kw
+
+        """
         input, weight = ctx.saved_values
         batch, in_channels, h, w = input.shape
         out_channels, in_channels, kh, kw = weight.shape
