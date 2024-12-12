@@ -78,20 +78,20 @@ class Network(minitorch.Module):
         x = self.conv1(x)
         x = x.relu()
         self.mid = x  # Save intermediate activation
-        
+
         x = self.conv2(x)
-        x = x.relu() 
+        x = x.relu()
         self.out = x  # Save intermediate activation
-        
+
         # Pooling and flattening
         x = minitorch.avgpool2d(x, (4, 4))
         x = x.view(BATCH, 392)
-        
+
         # Fully connected layers
         x = self.linear1(x)
         x = x.relu()
         x = minitorch.dropout(x, 0.25, not self.training)
-        
+
         # Output layer
         x = self.linear2(x)
         x = minitorch.logsoftmax(x, dim=1)
@@ -112,7 +112,7 @@ def make_mnist(start, stop):
 
 def default_log_fn(epoch, total_loss, correct, total, losses, model, log_file=None):
     """Log training progress to console and optionally to a file.
-    
+
     Args:
         epoch (int): Current training epoch
         total_loss (float): Total loss for this epoch
@@ -121,17 +121,17 @@ def default_log_fn(epoch, total_loss, correct, total, losses, model, log_file=No
         losses (list): List of loss values
         model: The neural network model
         log_file (file object, optional): File to write logs to
-        
+
     """
     log_message = (
         f"Epoch {epoch} "
         f"loss {total_loss:.4f} "
         f"valid acc {correct}/{total}"
     )
-    
+
     # Always print to console
     print(log_message)
-    
+
     # Write to log file if provided
     if log_file:
         log_file.write(log_message + "\n")
@@ -230,7 +230,7 @@ if __name__ == "__main__":
         trainer = ImageTrain()
         trainer.train(
             data_train=data_train,
-            data_val=data_val, 
+            data_val=data_val,
             learning_rate=config['learning_rate'],
             log_fn=default_log_fn,
             log_file=log_file

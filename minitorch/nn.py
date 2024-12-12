@@ -41,17 +41,13 @@ def tile(input: Tensor, kernel: Tuple[int, int]) -> Tuple[Tensor, int, int]:
     new_width = width // kw
 
     # Reshape input into tiles
-    reshaped = input.contiguous().view(
-        batch, channel, new_height, kh, new_width, kw
-    )
+    reshaped = input.contiguous().view(batch, channel, new_height, kh, new_width, kw)
 
     # Rearrange dimensions to group kernel dimensions at the end
     tiled = reshaped.permute(0, 1, 2, 4, 3, 5).contiguous()
-    
+
     # Combine kernel dimensions into single dimension
-    tiled = tiled.view(
-        batch, channel, new_height, new_width, kh * kw
-    )
+    tiled = tiled.view(batch, channel, new_height, new_width, kh * kw)
 
     return tiled, new_height, new_width
 
@@ -71,11 +67,12 @@ def avgpool2d(input: Tensor, kernel: Tuple[int, int]) -> Tensor:
     """
     tiled_tensor, output_height, output_width = tile(input, kernel)
     averaged_tensor = tiled_tensor.mean(dim=4)
-    return averaged_tensor.view(input.shape[0], input.shape[1], output_height, output_width)
+    return averaged_tensor.view(
+        input.shape[0], input.shape[1], output_height, output_width
+    )
 
 
 class Max(Function):
-    
     @staticmethod
     def forward(ctx: Context, a: Tensor, dim: Tensor) -> Tensor:
         """Computes the forward pass of max reduction.
@@ -116,7 +113,18 @@ class Max(Function):
 
 
 def max(input: Tensor, dim: Optional[int] = None) -> Tensor:
+    """Apply max reduction along the specified dimension.
 
+    Args:
+    ----
+        input (Tensor): The input tensor.
+        dim (Optional[int]): The dimension to reduce over. If None, reduces over all dimensions.
+
+    Returns:
+    -------
+        Tensor: The maximum values along the specified dimension.
+
+    """
     dim_tensor = input._ensure_tensor(0 if dim is None else dim)
     input_tensor = input.contiguous().view(input.size) if dim is None else input
     return Max.apply(input_tensor, dim_tensor)

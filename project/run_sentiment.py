@@ -73,25 +73,25 @@ class CNNSentimentKim(minitorch.Module):
         # TODO: Implement for Task 4.5.
         # Permute input to match Conv1d expected shape (batch, channels, length)
         x = embeddings.permute(0, 2, 1)
-        
+
         # Apply convolutions and ReLU activations
         conv_outputs = [
             self.conv1(x).relu(),
-            self.conv2(x).relu(), 
+            self.conv2(x).relu(),
             self.conv3(x).relu()
         ]
-        
+
         # Max pooling over time dimension for each conv output
         pooled_outputs = [minitorch.max(conv_out, 2) for conv_out in conv_outputs]
-        
+
         # Combine pooled features
         pooled = sum(pooled_outputs)
         pooled = pooled.view(pooled.shape[0], pooled.shape[1])
-        
+
         # Final fully connected layer with dropout and sigmoid
         out = self.fc(pooled)
         out = minitorch.dropout(out, self.dropout, ignore=not self.training)
-        
+
         return out.sigmoid().view(x.shape[0])
 
 
@@ -144,7 +144,7 @@ def default_log_fn(
     # Output logs
     print(log_message)
     if log_file:
-        log_file.write(log_message + "\n") 
+        log_file.write(log_message + "\n")
         log_file.flush()
 
 class SentenceSentimentTrain:
@@ -301,7 +301,7 @@ if __name__ == "__main__":
     # Training configuration
     config = {
         'feature_map_size': 100,
-        'filter_sizes': [3, 4, 5], 
+        'filter_sizes': [3, 4, 5],
         'dropout_rate': 0.25,
         'log_file_path': 'sentiment_logs.txt'
     }
