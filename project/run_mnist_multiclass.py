@@ -41,8 +41,7 @@ class Conv2d(minitorch.Module):
         self.bias = RParam(out_channels, 1, 1)
 
     def forward(self, input):
-        # TODO: Implement for Task 4.5.
-        raise NotImplementedError("Need to implement for Task 4.5")
+        return minitorch.conv2d(input, self.weights.value) + self.bias.value
 
 
 class Network(minitorch.Module):
@@ -68,12 +67,36 @@ class Network(minitorch.Module):
         self.out = None
 
         # TODO: Implement for Task 4.5.
-        raise NotImplementedError("Need to implement for Task 4.5")
+        self.conv1 = Conv2d(1, 4, 3, 3)
+        self.conv2 = Conv2d(4, 8, 3, 3)
+        self.linear1 = Linear(392, 64)
+        self.linear2 = Linear(64, C)
 
     def forward(self, x):
         # TODO: Implement for Task 4.5.
-        raise NotImplementedError("Need to implement for Task 4.5")
+        # Convolutional layers
+        x = self.conv1(x)
+        x = x.relu()
+        self.mid = x  # Save intermediate activation
 
+        x = self.conv2(x)
+        x = x.relu()
+        self.out = x  # Save intermediate activation
+
+        # Pooling and flattening
+        x = minitorch.avgpool2d(x, (4, 4))
+        x = x.view(BATCH, 392)
+
+        # Fully connected layers
+        x = self.linear1(x)
+        x = x.relu()
+        x = minitorch.dropout(x, 0.25, not self.training)
+
+        # Output layer
+        x = self.linear2(x)
+        x = minitorch.logsoftmax(x, dim=1)
+
+        return x
 
 def make_mnist(start, stop):
     ys = []
@@ -87,8 +110,32 @@ def make_mnist(start, stop):
     return X, ys
 
 
-def default_log_fn(epoch, total_loss, correct, total, losses, model):
-    print(f"Epoch {epoch} loss {total_loss} valid acc {correct}/{total}")
+def default_log_fn(epoch, total_loss, correct, total, losses, model, log_file=None):
+    """Log training progress to console and optionally to a file.
+
+    Args:
+        epoch (int): Current training epoch
+        total_loss (float): Total loss for this epoch
+        correct (int): Number of correct predictions
+        total (int): Total number of predictions
+        losses (list): List of loss values
+        model: The neural network model
+        log_file (file object, optional): File to write logs to
+
+    """
+    log_message = (
+        f"Epoch {epoch} "
+        f"loss {total_loss:.4f} "
+        f"valid acc {correct}/{total}"
+    )
+
+    # Always print to console
+    print(log_message)
+
+    # Write to log file if provided
+    if log_file:
+        log_file.write(log_message + "\n")
+        log_file.flush()
 
 
 class ImageTrain:
@@ -99,7 +146,7 @@ class ImageTrain:
         return self.model.forward(minitorch.tensor([x], backend=BACKEND))
 
     def train(
-        self, data_train, data_val, learning_rate, max_epochs=500, log_fn=default_log_fn
+        self, data_train, data_val, learning_rate, max_epochs=25, log_fn=default_log_fn, log_file=None
     ):
         (X_train, y_train) = data_train
         (X_val, y_val) = data_val
@@ -163,7 +210,7 @@ class ImageTrain:
                                     m = out[i, j]
                             if y[i, ind] == 1.0:
                                 correct += 1
-                    log_fn(epoch, total_loss, correct, BATCH, losses, model)
+                    log_fn(epoch, total_loss, correct, BATCH, losses, model, log_file=log_file)
 
                     total_loss = 0.0
                     model.train()
@@ -171,4 +218,20 @@ class ImageTrain:
 
 if __name__ == "__main__":
     data_train, data_val = (make_mnist(0, 5000), make_mnist(10000, 10500))
-    ImageTrain().train(data_train, data_val, learning_rate=0.01)
+
+    # Training configuration
+    config = {
+        'learning_rate': 0.01,
+        'log_file_path': 'mnist_logs.txt'
+    }
+
+    # Run training
+    with open(config['log_file_path'], 'w') as log_file:
+        trainer = ImageTrain()
+        trainer.train(
+            data_train=data_train,
+            data_val=data_val,
+            learning_rate=config['learning_rate'],
+            log_fn=default_log_fn,
+            log_file=log_file
+        )
